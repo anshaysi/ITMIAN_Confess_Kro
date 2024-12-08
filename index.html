@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confession Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .admin-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #007bff;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .admin-button:hover {
+            background-color: #0056b3;
+        }
+        form {
+            max-width: 400px;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        form input, form textarea, form button {
+            width: calc(100% - 20px);
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        form button {
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: inline-block;
+        }
+        form button:hover {
+            background: #0056b3;
+        }
+        .confession-count {
+            margin-left: 10px;
+            font-size: 16px;
+            color: #555;
+        }
+        #exportExcel {
+            display: none; /* Hide export button by default */
+        }
+    </style>
+</head>
+<body>
+    <button class="admin-button" onclick="authenticateUser()">Admin Options</button>
+
+    <h1>Confession Page</h1>
+    <form id="confessionForm">
+        <input type="text" id="toWhom" placeholder="To whom you are confessing (Name , Branch and Section.)" required>
+        <textarea id="confessionText" rows="5" placeholder="Enter your confession" required></textarea>
+        <div style="display: flex; align-items: center;">
+            <button type="button" onclick="addConfession()">Submit Confession</button>
+            <span class="confession-count" id="totalConfessionCount">Total Confessions: 0</span>
+        </div>
+    </form>
+
+    <button id="exportExcel" onclick="exportToExcel()">Export Confessions (0)</button>
+
+    <script>
+        // SheetDB API endpoint
+        const SHEETDB_API_URL = 'https://sheetdb.io/api/v1/t2xs74ab651wa';
+
+        // Track the total number of confessions
+        let totalConfessions = 0;
+
+        // Track the number of confessions available for export
+        let exportableConfessions = 0;
+
+        // Add confession to Google Sheets via SheetDB
+        async function addConfession() {
+            const toWhom = document.getElementById('toWhom').value.trim();
+            const confessionText = document.getElementById('confessionText').value.trim();
+
+            if (toWhom && confessionText) {
+                const confession = { "To Whom": toWhom, "Confession": confessionText };
+
+                try {
+                    const response = await fetch(SHEETDB_API_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(confession),
+                    });
+
+                    if (response.ok) {
+                        alert('Confession added successfully!');
+                        document.getElementById('confessionForm').reset();
+
+                        // Update counters
+                        totalConfessions++;
+                        exportableConfessions++;
+                        updateConfessionCounters();
+                    } else {
+                        alert('Failed to add confession. Please try again.');
+                    }
+                } catch (error) {
+                    alert('Error submitting confession: ' + error.message);
+                }
+            } else {
+                alert('Please fill in both fields.');
+            }
+        }
+
+        // Update the counters on the page
+        function updateConfessionCounters() {
+            document.getElementById('totalConfessionCount').innerText = `Total Confessions: ${totalConfessions}`;
+            document.getElementById('exportExcel').innerText = `Export Confessions (${exportableConfessions})`;
+        }
+
+        // Authenticate admin to show export button
+        function authenticateUser() {
+            const password = prompt('Enter the admin password:');
+            if (password === '&(&^^%^&*^)6454jj') { // Replace with your password
+                document.getElementById('exportExcel').style.display = 'block'; // Show the export button
+                alert('Authentication successful. Export button is now visible.');
+            } else {
+                alert('Incorrect password. Access denied.');
+            }
+        }
+
+        // Fetch and export confessions from SheetDB
+        async function exportToExcel() {
+            try {
+                const response = await fetch(SHEETDB_API_URL);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch data. Check your API URL or permissions.');
+                }
+
+                const data = await response.json();
+                if (data.length === 0) {
+                    alert('No confessions available to export!');
+                    return;
+                }
+
+                // Convert data to CSV format
+                let csvContent = 'To Whom,Confession\n';
+                data.forEach(row => {
+                    csvContent += `${row['To Whom']},${row['Confession']}\n`;
+                });
+
+                // Download as CSV file
+                const blob = new Blob([csvContent], { type: 'text/csv' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = 'Confessions.csv';
+                link.click();
+
+                alert(`${data.length} confessions exported successfully!`);
+
+                // Reset exportable confessions counter
+                exportableConfessions = 0;
+                updateConfessionCounters();
+            } catch (error) {
+                alert('Error exporting confessions: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>
